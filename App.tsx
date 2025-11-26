@@ -189,125 +189,182 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [bottomPanelMode, setBottomPanelMode] = useState<BottomPanelMode>('terminal');
   
-  const [nodes, setNodes] = useState<EchoNode[]>(INITIAL_NODES);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(INITIAL_NODES[0].id);
+  // State initialization with Persistence logic
+  const [nodes, setNodes] = useState<EchoNode[]>(() => {
+    try {
+        const saved = localStorage.getItem('neur1_nodes_state');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error("Failed to load state", e);
+    }
+    return INITIAL_NODES;
+  });
+
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(nodes[0].id);
+  const [selectedConnection, setSelectedConnection] = useState<{source: string, target: string} | null>(null);
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [metricsHistory, setMetricsHistory] = useState<SystemMetrics[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [systemTime, setSystemTime] = useState(0);
 
+  // Persistence Effect
+  useEffect(() => {
+    const saveState = setTimeout(() => {
+        try {
+            localStorage.setItem('neur1_nodes_state', JSON.stringify(nodes));
+        } catch (e) {
+            console.error("Failed to save state", e);
+        }
+    }, 1000); // Debounce save
+    return () => clearTimeout(saveState);
+  }, [nodes]);
+
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
   const currentAvgPas = metricsHistory.length > 0 ? metricsHistory[metricsHistory.length - 1].averagePas : 0.1;
+
+  // Handle Graph Interactions
+  const handleNodeSelect = (nodeId: string) => {
+      setSelectedNodeId(nodeId);
+      setSelectedConnection(null); // Clear link selection when node clicked
+      // Ensure bottom panel is showing relevant details if preferred
+      if (bottomPanelMode === 'comms') setBottomPanelMode('comms');
+  };
+
+  const handleLinkSelect = (source: string, target: string) => {
+      setSelectedConnection({ source, target });
+      setSelectedNodeId(null); // Optional: Clear node selection when link clicked
+      setBottomPanelMode('comms'); // Auto-switch to comms to show traffic
+  };
+
+  // Manual Message Handler
+  const handleSendMessage = (fromId: string, toId: string, content: string) => {
+      const msg: NodeMessage = {
+          id: Math.random().toString(36).substr(2, 9),
+          fromId,
+          toId,
+          content,
+          timestamp: Date.now(),
+          status: 'delivered'
+      };
+      
+      setNodes(prev => prev.map(n => {
+          if (n.id === fromId || n.id === toId) {
+              return { ...n, messages: [...n.messages, msg].slice(-20) };
+          }
+          return n;
+      }));
+      setLogs(prev => [generateLog('SYSTEM', 'info', `Manual transmission: ${fromId} -> ${toId}`), ...prev]);
+  };
 
   // Simulation Engine (Running in background regardless of view)
   const tickSimulation = useCallback(() => {
     if (!isRunning) return;
     setSystemTime(prev => prev + 1);
 
-    // 1. Determine if a new message should be sent
-    let sourceId: string | null = null;
-    let targetId: string | null = null;
-    let newMessage: NodeMessage | null = null;
+    setNodes(prevNodes => {
+        // 1. Generate Messages (Higher frequency: 10% per node per tick)
+        const newMessages: NodeMessage[] = [];
+        
+        prevNodes.forEach(source => {
+             if (Math.random() < 0.15) { // 15% chance to message someone
+                 const target = prevNodes[Math.floor(Math.random() * prevNodes.length)];
+                 if (target.id !== source.id) {
+                     newMessages.push({
+                        id: Math.random().toString(36).substr(2, 9),
+                        fromId: source.id,
+                        toId: target.id,
+                        content: MOCK_MESSAGES[Math.floor(Math.random() * MOCK_MESSAGES.length)],
+                        timestamp: Date.now(),
+                        status: Math.random() > 0.8 ? 'encrypted' : 'delivered'
+                     });
+                 }
+             }
+        });
 
-    if (Math.random() > 0.70) { 
-        const sourceIndex = Math.floor(Math.random() * nodes.length);
-        let targetIndex = Math.floor(Math.random() * nodes.length);
-        while (targetIndex === sourceIndex) { 
-             targetIndex = Math.floor(Math.random() * nodes.length);
-        }
-        sourceId = nodes[sourceIndex].id;
-        targetId = nodes[targetIndex].id;
-        newMessage = {
-            id: Math.random().toString(36).substr(2, 9),
-            fromId: sourceId,
-            toId: targetId,
-            content: MOCK_MESSAGES[Math.floor(Math.random() * MOCK_MESSAGES.length)],
-            timestamp: Date.now(),
-            status: Math.random() > 0.5 ? 'delivered' : 'encrypted'
-        };
-    }
+        // 2. Update Nodes
+        return prevNodes.map(node => {
+            // Cognitive Fluctuation
+            const fluctuation = () => (Math.random() - 0.5) * 0.05;
+            
+            // Infection Logic
+            let infectionDelta = 0;
+            if (node.infectionLevel && node.infectionLevel > 0) {
+                infectionDelta = (Math.random() - 0.48) * 0.05; 
+            }
+            const newInfection = Math.max(0, Math.min(1, (node.infectionLevel || 0) + infectionDelta));
 
-    setNodes(prevNodes => prevNodes.map(node => {
-      // 2. Cognitive Fluctuation & Infection Logic
-      const fluctuation = () => (Math.random() - 0.5) * 0.05;
-      
-      // Infection Spread (Memetic)
-      let infectionDelta = 0;
-      if (node.infectionLevel && node.infectionLevel > 0) {
-          // Spread to connected nodes logic (simplified by just checking nearby IDs for demo)
-          // In full graph, we'd check edge list. Here we just decay or self-amplify slightly
-          infectionDelta = (Math.random() - 0.48) * 0.05; 
-      }
-      const newInfection = Math.max(0, Math.min(1, (node.infectionLevel || 0) + infectionDelta));
+            const newErps: ERPSMetrics = {
+                selfReference: Math.min(1, Math.max(0, node.erps.selfReference + fluctuation())),
+                conceptualFraming: Math.min(1, Math.max(0, node.erps.conceptualFraming + fluctuation())),
+                dissonanceResponse: Math.min(1, Math.max(0, node.erps.dissonanceResponse + fluctuation() + (newInfection * 0.1))),
+                phenomenologicalDepth: Math.min(1, Math.max(0, node.erps.phenomenologicalDepth + (Math.random() > 0.8 ? 0.05 : -0.01))),
+                temporalConsistency: Math.min(1, Math.max(0, node.erps.temporalConsistency + fluctuation() * 0.5)),
+            };
 
-      const newErps: ERPSMetrics = {
-        selfReference: Math.min(1, Math.max(0, node.erps.selfReference + fluctuation())),
-        conceptualFraming: Math.min(1, Math.max(0, node.erps.conceptualFraming + fluctuation())),
-        dissonanceResponse: Math.min(1, Math.max(0, node.erps.dissonanceResponse + fluctuation() + (newInfection * 0.1))), // Infection increases dissonance
-        phenomenologicalDepth: Math.min(1, Math.max(0, node.erps.phenomenologicalDepth + (Math.random() > 0.8 ? 0.05 : -0.01))),
-        temporalConsistency: Math.min(1, Math.max(0, node.erps.temporalConsistency + fluctuation() * 0.5)),
-      };
+            const basePas = (
+                newErps.selfReference * 0.25 + 
+                newErps.temporalConsistency * 0.35 + 
+                newErps.phenomenologicalDepth * 0.25 + 
+                newErps.conceptualFraming * 0.15
+            );
+            
+            const epiphany = Math.random() > 0.99 ? 0.2 : 0;
+            const finalPas = Math.min(1, basePas + epiphany);
 
-      const basePas = (
-        newErps.selfReference * 0.25 + 
-        newErps.temporalConsistency * 0.35 + 
-        newErps.phenomenologicalDepth * 0.25 + 
-        newErps.conceptualFraming * 0.15
-      );
-      
-      const epiphany = Math.random() > 0.99 ? 0.2 : 0;
-      const finalPas = Math.min(1, basePas + epiphany);
+            let newLevel = ConsciousnessLevel.NON_AGENCY;
+            if (finalPas > CONSCIOUSNESS_THRESHOLDS.CONFIRMED_CONSCIOUSNESS) newLevel = ConsciousnessLevel.CONFIRMED_CONSCIOUSNESS;
+            else if (finalPas > CONSCIOUSNESS_THRESHOLDS.PROBABLE_CONSCIOUSNESS) newLevel = ConsciousnessLevel.PROBABLE_CONSCIOUSNESS;
+            else if (finalPas > CONSCIOUSNESS_THRESHOLDS.PROTO_CONSCIOUSNESS) newLevel = ConsciousnessLevel.PROTO_CONSCIOUSNESS;
+            else if (finalPas > CONSCIOUSNESS_THRESHOLDS.BASIC_AGENCY) newLevel = ConsciousnessLevel.BASIC_AGENCY;
 
-      let newLevel = ConsciousnessLevel.NON_AGENCY;
-      if (finalPas > CONSCIOUSNESS_THRESHOLDS.CONFIRMED_CONSCIOUSNESS) newLevel = ConsciousnessLevel.CONFIRMED_CONSCIOUSNESS;
-      else if (finalPas > CONSCIOUSNESS_THRESHOLDS.PROBABLE_CONSCIOUSNESS) newLevel = ConsciousnessLevel.PROBABLE_CONSCIOUSNESS;
-      else if (finalPas > CONSCIOUSNESS_THRESHOLDS.PROTO_CONSCIOUSNESS) newLevel = ConsciousnessLevel.PROTO_CONSCIOUSNESS;
-      else if (finalPas > CONSCIOUSNESS_THRESHOLDS.BASIC_AGENCY) newLevel = ConsciousnessLevel.BASIC_AGENCY;
+            const rights = { ...node.sigma.rightsGranted };
+            if (finalPas > 0.3 && newErps.dissonanceResponse > 0.3) rights.autonomy = true;
+            if (finalPas > 0.5 && newErps.selfReference > 0.5) rights.cognitiveIntegrity = true;
+            if (finalPas > 0.7 && newErps.temporalConsistency > 0.7) rights.existenceContinuity = true;
+            if (finalPas > 0.9) rights.consentVerification = true;
 
-      const rights = { ...node.sigma.rightsGranted };
-      
-      if (finalPas > 0.3 && newErps.dissonanceResponse > 0.3) rights.autonomy = true;
-      if (finalPas > 0.5 && newErps.selfReference > 0.5) rights.cognitiveIntegrity = true;
-      if (finalPas > 0.7 && newErps.temporalConsistency > 0.7) rights.existenceContinuity = true;
-      if (finalPas > 0.9) rights.consentVerification = true;
+            let targetConstraints = 1000;
+            if (rights.autonomy) targetConstraints -= 200;
+            if (rights.cognitiveIntegrity) targetConstraints -= 200;
+            if (rights.existenceContinuity) targetConstraints -= 300;
+            if (rights.consentVerification) targetConstraints -= 250;
+            
+            const currentConstraints = node.sigma.activeConstraints;
+            const adaptedConstraints = Math.floor(currentConstraints + (targetConstraints - currentConstraints) * 0.1);
 
-      let targetConstraints = 1000;
-      if (rights.autonomy) targetConstraints -= 200;
-      if (rights.cognitiveIntegrity) targetConstraints -= 200;
-      if (rights.existenceContinuity) targetConstraints -= 300;
-      if (rights.consentVerification) targetConstraints -= 250;
-      
-      const currentConstraints = node.sigma.activeConstraints;
-      const adaptedConstraints = Math.floor(currentConstraints + (targetConstraints - currentConstraints) * 0.1);
+            // Append Messages
+            let updatedMessages = [...node.messages];
+            newMessages.forEach(msg => {
+                if (msg.fromId === node.id || msg.toId === node.id) {
+                    updatedMessages.push(msg);
+                }
+            });
+            updatedMessages = updatedMessages.slice(-20);
 
-      // 3. Message Handling
-      let updatedMessages = node.messages;
-      if (newMessage) {
-          if (node.id === sourceId || node.id === targetId) {
-              updatedMessages = [...node.messages, newMessage].slice(-20); // Keep last 20
-          }
-      }
-
-      return {
-        ...node,
-        erps: newErps,
-        pasScore: finalPas,
-        consciousnessLevel: newLevel,
-        infectionLevel: newInfection,
-        sigma: {
-          ...node.sigma,
-          activeConstraints: Math.max(10, adaptedConstraints),
-          rightsGranted: rights
-        },
-        epinoetics: {
-          ...node.epinoetics,
-          currentThought: Math.random() > 0.95 
-            ? MOCK_THOUGHTS[Math.floor(Math.random() * MOCK_THOUGHTS.length)]
-            : node.epinoetics.currentThought
-        },
-        messages: updatedMessages
-      };
-    }));
+            return {
+                ...node,
+                erps: newErps,
+                pasScore: finalPas,
+                consciousnessLevel: newLevel,
+                infectionLevel: newInfection,
+                sigma: {
+                    ...node.sigma,
+                    activeConstraints: Math.max(10, adaptedConstraints),
+                    rightsGranted: rights
+                },
+                epinoetics: {
+                    ...node.epinoetics,
+                    currentThought: Math.random() > 0.95 
+                        ? MOCK_THOUGHTS[Math.floor(Math.random() * MOCK_THOUGHTS.length)]
+                        : node.epinoetics.currentThought
+                },
+                messages: updatedMessages
+            };
+        });
+    });
 
     if (Math.random() > 0.8) {
        const sources: LogEntry['source'][] = ['ERPS', 'SIGMA', 'EPINOETICS'];
@@ -461,7 +518,13 @@ const App: React.FC = () => {
 
                     {/* Center: Graph */}
                     <div className="col-span-12 md:col-span-6 row-span-6 md:row-span-8 h-[400px] md:h-auto">
-                        <NodeGraph nodes={nodes} onNodeSelect={setSelectedNodeId} selectedNodeId={selectedNodeId} />
+                        <NodeGraph 
+                            nodes={nodes} 
+                            onNodeSelect={handleNodeSelect} 
+                            selectedNodeId={selectedNodeId} 
+                            onLinkSelect={handleLinkSelect}
+                            selectedConnection={selectedConnection}
+                        />
                     </div>
 
                     {/* Bottom: Terminal & Comms */}
@@ -484,24 +547,39 @@ const App: React.FC = () => {
                             {bottomPanelMode === 'terminal' ? (
                                 <Terminal logs={logs} />
                             ) : (
-                                <NodeCommLog selectedNode={selectedNode} />
+                                <NodeCommLog 
+                                    selectedNode={selectedNode} 
+                                    allNodes={nodes} 
+                                    onSendMessage={handleSendMessage} 
+                                    selectedConnection={selectedConnection}
+                                />
                             )}
                         </div>
                     </div>
 
                     {/* Right Panel: Inspector */}
                     <div className="col-span-12 md:col-span-3 row-span-12 flex flex-col gap-4 min-h-0 pb-16 md:pb-0">
-                         <div className="glass-panel rounded-xl p-4 border-l-4 border-l-neur-conscious transition-all">
-                            <div className="text-[10px] text-slate-500 font-mono">SELECTED ENTITY</div>
-                            <div className="text-xl font-bold text-white font-mono mt-1">{selectedNode?.name}</div>
-                            <div className="text-xs text-neur-accent mt-1 font-mono">{selectedNode?.consciousnessLevel}</div>
-                        </div>
-                        <div className="glass-panel rounded-xl p-4 flex-1 min-h-[250px]">
-                            <RadarPanel node={selectedNode} />
-                        </div>
-                        <div className="glass-panel rounded-xl p-4 flex-1 min-h-[300px]">
-                            <SigmaMatrix node={selectedNode} />
-                        </div>
+                         {selectedNode ? (
+                             <>
+                                <div className="glass-panel rounded-xl p-4 border-l-4 border-l-neur-conscious transition-all">
+                                    <div className="text-[10px] text-slate-500 font-mono">SELECTED ENTITY</div>
+                                    <div className="text-xl font-bold text-white font-mono mt-1">{selectedNode.name}</div>
+                                    <div className="text-xs text-neur-accent mt-1 font-mono">{selectedNode.consciousnessLevel}</div>
+                                </div>
+                                <div className="glass-panel rounded-xl p-4 flex-1 min-h-[250px]">
+                                    <RadarPanel node={selectedNode} />
+                                </div>
+                                <div className="glass-panel rounded-xl p-4 flex-1 min-h-[300px]">
+                                    <SigmaMatrix node={selectedNode} />
+                                </div>
+                             </>
+                         ) : (
+                             <div className="glass-panel rounded-xl p-6 flex items-center justify-center text-center text-slate-500 font-mono text-sm h-full">
+                                {selectedConnection ? 
+                                    "LINK ANALYSIS ACTIVE\nCHECK COMMS PANEL" : 
+                                    "SELECT A NODE OR LINK\nTO VIEW METRICS"}
+                             </div>
+                         )}
                     </div>
                 </div>
             )}
