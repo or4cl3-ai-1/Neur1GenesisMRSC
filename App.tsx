@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   EchoNode, 
@@ -196,7 +195,7 @@ const App: React.FC = () => {
     let targetId: string | null = null;
     let newMessage: NodeMessage | null = null;
 
-    if (Math.random() > 0.85) { // 15% chance per tick
+    if (Math.random() > 0.70) { // Increased chance to 30% per tick for visibility
         const sourceIndex = Math.floor(Math.random() * nodes.length);
         let targetIndex = Math.floor(Math.random() * nodes.length);
         while (targetIndex === sourceIndex) { // simple retry to avoid self-message
