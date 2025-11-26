@@ -1,0 +1,7 @@
+{
+  "name": "Neur1Genesis-MRSC-Σ v3.0",
+  "description": "A high-fidelity dashboard visualizing the Unified Cognitive Architecture, featuring Real-time Consciousness Detection (ERPS), Ethical Constraint Enforcement (Sigma Matrix), and Synthetic Epinoetics monitoring.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
