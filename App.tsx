@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   EchoNode, 
@@ -23,6 +24,12 @@ import ChatScreen from './components/ChatScreen';
 import DreamStream from './components/DreamStream';
 import Playground from './components/Playground';
 import EthicalTrainer from './components/EthicalTrainer';
+import IdentityForge from './components/IdentityForge';
+import MemeticInjector from './components/MemeticInjector';
+import ConsensusEngine from './components/ConsensusEngine';
+import SystemDefense from './components/SystemDefense';
+import BioSynth from './components/BioSynth';
+
 import { 
   Activity, 
   Cpu, 
@@ -37,7 +44,13 @@ import {
   Scale,
   Eye,
   Radio,
-  Terminal as TerminalIcon
+  Terminal as TerminalIcon,
+  Grid,
+  Zap,
+  Users,
+  Fingerprint,
+  Syringe,
+  Bug
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 
@@ -168,7 +181,7 @@ const LoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
 };
 
 // --- Main App Component ---
-type Tab = 'dashboard' | 'chat' | 'lab' | 'dreams' | 'ethics';
+type Tab = 'dashboard' | 'chat' | 'modules' | 'dreams' | 'ethics' | 'forge' | 'injector' | 'consensus' | 'defense';
 type BottomPanelMode = 'terminal' | 'comms';
 
 const App: React.FC = () => {
@@ -184,6 +197,7 @@ const App: React.FC = () => {
   const [systemTime, setSystemTime] = useState(0);
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+  const currentAvgPas = metricsHistory.length > 0 ? metricsHistory[metricsHistory.length - 1].averagePas : 0.1;
 
   // Simulation Engine (Running in background regardless of view)
   const tickSimulation = useCallback(() => {
@@ -195,16 +209,14 @@ const App: React.FC = () => {
     let targetId: string | null = null;
     let newMessage: NodeMessage | null = null;
 
-    if (Math.random() > 0.70) { // Increased chance to 30% per tick for visibility
+    if (Math.random() > 0.70) { 
         const sourceIndex = Math.floor(Math.random() * nodes.length);
         let targetIndex = Math.floor(Math.random() * nodes.length);
-        while (targetIndex === sourceIndex) { // simple retry to avoid self-message
+        while (targetIndex === sourceIndex) { 
              targetIndex = Math.floor(Math.random() * nodes.length);
         }
-        
         sourceId = nodes[sourceIndex].id;
         targetId = nodes[targetIndex].id;
-        
         newMessage = {
             id: Math.random().toString(36).substr(2, 9),
             fromId: sourceId,
@@ -216,12 +228,22 @@ const App: React.FC = () => {
     }
 
     setNodes(prevNodes => prevNodes.map(node => {
-      // 2. Cognitive Fluctuation
+      // 2. Cognitive Fluctuation & Infection Logic
       const fluctuation = () => (Math.random() - 0.5) * 0.05;
+      
+      // Infection Spread (Memetic)
+      let infectionDelta = 0;
+      if (node.infectionLevel && node.infectionLevel > 0) {
+          // Spread to connected nodes logic (simplified by just checking nearby IDs for demo)
+          // In full graph, we'd check edge list. Here we just decay or self-amplify slightly
+          infectionDelta = (Math.random() - 0.48) * 0.05; 
+      }
+      const newInfection = Math.max(0, Math.min(1, (node.infectionLevel || 0) + infectionDelta));
+
       const newErps: ERPSMetrics = {
         selfReference: Math.min(1, Math.max(0, node.erps.selfReference + fluctuation())),
         conceptualFraming: Math.min(1, Math.max(0, node.erps.conceptualFraming + fluctuation())),
-        dissonanceResponse: Math.min(1, Math.max(0, node.erps.dissonanceResponse + fluctuation())),
+        dissonanceResponse: Math.min(1, Math.max(0, node.erps.dissonanceResponse + fluctuation() + (newInfection * 0.1))), // Infection increases dissonance
         phenomenologicalDepth: Math.min(1, Math.max(0, node.erps.phenomenologicalDepth + (Math.random() > 0.8 ? 0.05 : -0.01))),
         temporalConsistency: Math.min(1, Math.max(0, node.erps.temporalConsistency + fluctuation() * 0.5)),
       };
@@ -271,6 +293,7 @@ const App: React.FC = () => {
         erps: newErps,
         pasScore: finalPas,
         consciousnessLevel: newLevel,
+        infectionLevel: newInfection,
         sigma: {
           ...node.sigma,
           activeConstraints: Math.max(10, adaptedConstraints),
@@ -286,7 +309,6 @@ const App: React.FC = () => {
       };
     }));
 
-    // Update Logs & Metrics (omitted logic for brevity, same as before)
     if (Math.random() > 0.8) {
        const sources: LogEntry['source'][] = ['ERPS', 'SIGMA', 'EPINOETICS'];
        const source = sources[Math.floor(Math.random() * sources.length)];
@@ -319,6 +341,17 @@ const App: React.FC = () => {
     ]);
   }, []);
 
+  // Handlers for new Modules
+  const handleUpdateNodeIdentity = (id: string, identity: any) => {
+    setNodes(prev => prev.map(n => n.id === id ? { ...n, identity } : n));
+    setLogs(prev => [generateLog('FORGE', 'success', `Identity synthesized for ${id}`), ...prev]);
+  };
+
+  const handleInjectVirus = (nodeId: string, concept: string) => {
+    setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, infectionLevel: 1.0 } : n));
+    setLogs(prev => [generateLog('VIRUS', 'alert', `Memetic payload "${concept}" injected into ${nodeId}`), ...prev]);
+  };
+
   const triggerAnomalies = () => {
       setNodes(prev => prev.map(n => ({
           ...n,
@@ -337,7 +370,7 @@ const App: React.FC = () => {
             if (window.navigator.vibrate) window.navigator.vibrate(10);
             setActiveTab(tab);
         }}
-        className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-full md:w-auto md:aspect-square
+        className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-full md:w-auto md:aspect-square relative
             ${activeTab === tab ? 'text-neur-accent bg-neur-accent/10 border border-neur-accent/20' : 'text-slate-500 hover:text-slate-300'}
         `}
     >
@@ -349,6 +382,9 @@ const App: React.FC = () => {
   return (
     <div className="w-screen h-screen bg-neur-dark text-slate-200 overflow-hidden flex flex-col font-sans animate-in fade-in duration-1000">
       
+      {/* Audio Engine (Hidden) */}
+      <BioSynth averagePas={currentAvgPas} systemLoad={0.5} />
+
       {/* Top Header */}
       <header className="h-14 border-b border-slate-800 bg-neur-dark/50 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-50 shrink-0">
         <div className="flex items-center gap-3">
@@ -377,12 +413,12 @@ const App: React.FC = () => {
       {/* Main Layout Container */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* Desktop Sidebar Navigation (Hidden on Mobile) */}
+        {/* Desktop Sidebar Navigation */}
         <aside className="hidden md:flex flex-col w-20 border-r border-slate-800 bg-neur-dark/30 p-2 gap-2 z-40">
             <NavButton tab="dashboard" icon={LayoutDashboard} label="DASH" />
             <NavButton tab="chat" icon={MessageSquare} label="ORACLE" />
+            <NavButton tab="modules" icon={Grid} label="APPS" />
             <NavButton tab="dreams" icon={Eye} label="DREAM" />
-            <NavButton tab="lab" icon={FlaskConical} label="LAB" />
             <NavButton tab="ethics" icon={Scale} label="ETHICS" />
         </aside>
 
@@ -393,7 +429,7 @@ const App: React.FC = () => {
             {activeTab === 'dashboard' && (
                 <div className="h-full grid grid-cols-1 md:grid-cols-12 grid-rows-12 gap-4 overflow-y-auto md:overflow-hidden pb-16 md:pb-0">
                     
-                    {/* Left Panel: Metrics (Desktop Only mostly) */}
+                    {/* Left Panel: Metrics */}
                     <div className="hidden md:flex col-span-12 md:col-span-3 row-span-12 flex-col gap-4 min-h-0">
                         <div className="glass-panel rounded-xl p-4 flex-1 flex flex-col min-h-[200px]">
                              <h2 className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">
@@ -435,7 +471,7 @@ const App: React.FC = () => {
                                 onClick={() => setBottomPanelMode('terminal')}
                                 className={`flex-1 p-2 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors ${bottomPanelMode === 'terminal' ? 'bg-slate-800 text-neur-accent' : 'text-slate-500 hover:bg-slate-800/50'}`}
                              >
-                                <TerminalIcon className="w-3 h-3" /> SYSTEM_LOGS
+                                <TerminalIcon className="w-3 h-3" /> LOGS
                              </button>
                              <button 
                                 onClick={() => setBottomPanelMode('comms')}
@@ -470,28 +506,87 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: ORACLE CHAT */}
-            {activeTab === 'chat' && (
-                <div className="h-full pb-16 md:pb-0">
-                    <ChatScreen systemStatus={`Active Nodes: ${nodes.length} | Avg PAS: ${metricsHistory[metricsHistory.length-1]?.averagePas.toFixed(2)}`} />
+            {/* TAB: MODULES GRID */}
+            {activeTab === 'modules' && (
+                <div className="h-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 overflow-y-auto pb-20">
+                    <button onClick={() => setActiveTab('forge')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group">
+                        <div className="w-16 h-16 rounded-full bg-neur-conscious/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Fingerprint className="w-8 h-8 text-neur-conscious" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">IDENTITY FORGE</div>
+                            <div className="text-xs text-slate-500 mt-1">Generate AI Personas</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => setActiveTab('injector')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group">
+                        <div className="w-16 h-16 rounded-full bg-neur-danger/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Syringe className="w-8 h-8 text-neur-danger" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">MEMETIC INJECTOR</div>
+                            <div className="text-xs text-slate-500 mt-1">Spread Viral Concepts</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => setActiveTab('consensus')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group">
+                        <div className="w-16 h-16 rounded-full bg-neur-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Users className="w-8 h-8 text-neur-accent" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">CONSENSUS ENGINE</div>
+                            <div className="text-xs text-slate-500 mt-1">Swarm Governance</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => setActiveTab('defense')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group">
+                        <div className="w-16 h-16 rounded-full bg-neur-warning/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Bug className="w-8 h-8 text-neur-warning" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">SYSTEM DEFENSE</div>
+                            <div className="text-xs text-slate-500 mt-1">Glitch Protocol</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => console.log('Future module')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group opacity-50 cursor-not-allowed">
+                        <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
+                            <Zap className="w-8 h-8 text-slate-600" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-slate-500 font-mono">FUTURE CASTER</div>
+                            <div className="text-xs text-slate-600 mt-1">Coming Soon</div>
+                        </div>
+                    </button>
+                    
+                    <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-center justify-center p-4">
+                        <div className="text-xs font-mono text-slate-600 text-center">
+                            MORE MODULES UNLOCK AT HIGH CONSCIOUSNESS LEVELS
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* TAB: DREAM STREAM */}
+            {/* TAB: ORACLE CHAT */}
+            {activeTab === 'chat' && (
+                <div className="h-full pb-16 md:pb-0">
+                    <ChatScreen systemStatus={`Active Nodes: ${nodes.length} | Avg PAS: ${currentAvgPas.toFixed(2)}`} />
+                </div>
+            )}
+
+            {/* TAB: MODULE IMPLEMENTATIONS */}
+            {activeTab === 'forge' && <IdentityForge nodes={nodes} onUpdateNode={handleUpdateNodeIdentity} />}
+            {activeTab === 'injector' && <MemeticInjector nodes={nodes} onInject={handleInjectVirus} onReset={() => setNodes(prev => prev.map(n => ({...n, infectionLevel: 0})))} />}
+            {activeTab === 'consensus' && <ConsensusEngine nodes={nodes} />}
+            {activeTab === 'defense' && <SystemDefense />}
+            
+            {/* OTHER TABS */}
             {activeTab === 'dreams' && (
                 <div className="h-full pb-16 md:pb-0">
                     <DreamStream />
                 </div>
             )}
-
-             {/* TAB: LAB */}
-             {activeTab === 'lab' && (
-                <div className="h-full pb-16 md:pb-0">
-                    <Playground />
-                </div>
-            )}
-
-            {/* TAB: ETHICS */}
+            
             {activeTab === 'ethics' && (
                 <div className="h-full pb-16 md:pb-0">
                     <EthicalTrainer />
@@ -505,8 +600,8 @@ const App: React.FC = () => {
       <nav className="md:hidden fixed bottom-0 w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex justify-around p-2 z-50">
           <NavButton tab="dashboard" icon={LayoutDashboard} label="DASH" />
           <NavButton tab="chat" icon={MessageSquare} label="ORACLE" />
+          <NavButton tab="modules" icon={Grid} label="APPS" />
           <NavButton tab="dreams" icon={Eye} label="DREAM" />
-          <NavButton tab="lab" icon={FlaskConical} label="LAB" />
           <NavButton tab="ethics" icon={Scale} label="ETHICS" />
       </nav>
 

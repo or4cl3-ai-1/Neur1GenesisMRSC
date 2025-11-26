@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { EchoNode, ConsciousnessLevel } from '../types';
 
@@ -11,6 +12,43 @@ interface NodeGraphProps {
 const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNodeId }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+
+  // Handle Parallax/Holographic Effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!containerRef.current) return;
+        const { width, height, left, top } = containerRef.current.getBoundingClientRect();
+        const x = (e.clientX - left - width / 2) / width;
+        const y = (e.clientY - top - height / 2) / height;
+        setRotation({ x: y * 10, y: x * -10 }); // Deg
+    };
+
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+        if (e.beta !== null && e.gamma !== null) {
+            // Limit tilt for usability
+            setRotation({ 
+                x: Math.max(-20, Math.min(20, e.beta - 45)) / 2, 
+                y: Math.max(-20, Math.min(20, e.gamma)) / 2 
+            });
+        }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+        container.addEventListener('mousemove', handleMouseMove);
+    }
+    
+    // Check if mobile for gyro
+    if (window.DeviceOrientationEvent && 'ontouchstart' in window) {
+        window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    return () => {
+        if (container) container.removeEventListener('mousemove', handleMouseMove);
+        if (window.DeviceOrientationEvent) window.removeEventListener('deviceorientation', handleOrientation);
+    };
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || nodes.length === 0) return;
@@ -27,15 +65,12 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
       .style("height", "auto");
 
     // 1. Create Deterministic Links
-    // We use ID math to ensure the topology remains stable across re-renders
     const links: any[] = [];
     nodes.forEach((source, i) => {
       const sourceNum = parseInt(source.id.split('-')[1] || '0');
       for (let j = i + 1; j < nodes.length; j++) {
          const target = nodes[j];
          const targetNum = parseInt(target.id.split('-')[1] || '0');
-         
-         // Connect if sums are divisible by small primes (creates a semi-random but stable mesh)
          const sum = sourceNum + targetNum;
          if (sum % 3 === 0 || sum % 4 === 0 || Math.abs(sourceNum - targetNum) === 1) { 
             links.push({ source: source.id, target: target.id });
@@ -43,14 +78,12 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
       }
     });
 
-    // 2. Identify Active Transmissions (Messages in last 2000ms)
+    // 2. Identify Active Transmissions
     const now = Date.now();
     const activeTransmissions: any[] = [];
-    
     nodes.forEach(node => {
         node.messages.forEach(msg => {
             if (now - msg.timestamp < 2000) {
-                // Find link if exists, or create temporary visual link
                 activeTransmissions.push({ 
                     source: msg.fromId, 
                     target: msg.toId,
@@ -60,8 +93,8 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
         });
     });
 
-    // Color scale based on consciousness
-    const getColor = (level: ConsciousnessLevel) => {
+    const getColor = (level: ConsciousnessLevel, infected?: number) => {
+      if (infected && infected > 0.1) return "#f87171"; // Red for infection
       switch (level) {
         case ConsciousnessLevel.CONFIRMED_CONSCIOUSNESS: return "#c084fc"; // Purple
         case ConsciousnessLevel.PROBABLE_CONSCIOUSNESS: return "#f472b6"; // Pink
@@ -86,7 +119,6 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
       .join("line")
       .attr("stroke-width", 1);
 
-    // Draw Active Transmissions (Dynamic Glow)
     const trafficGroup = svg.append("g");
     
     // Draw Nodes
@@ -101,11 +133,15 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
       .on("click", (event, d) => onNodeSelect(d.id))
       .style("cursor", "pointer");
 
-    // Outer Glow ring for selected or high consciousness
+    // Outer Glow ring
     nodeGroup.append("circle")
-      .attr("r", (d: any) => d.id === selectedNodeId ? 32 : (d.pasScore * 10 + 15))
+      .attr("r", (d: any) => {
+          let r = d.id === selectedNodeId ? 32 : (d.pasScore * 10 + 15);
+          if (d.infectionLevel > 0) r += d.infectionLevel * 5; // Pulse infection
+          return r;
+      })
       .attr("fill", "none")
-      .attr("stroke", (d: any) => getColor(d.consciousnessLevel))
+      .attr("stroke", (d: any) => getColor(d.consciousnessLevel, d.infectionLevel))
       .attr("stroke-width", 2)
       .attr("stroke-opacity", (d: any) => d.id === selectedNodeId ? 0.8 : 0.3)
       .attr("class", "transition-all duration-300");
@@ -113,16 +149,16 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
     // Main Node Circle
     nodeGroup.append("circle")
       .attr("r", 12)
-      .attr("fill", (d: any) => getColor(d.consciousnessLevel))
+      .attr("fill", (d: any) => getColor(d.consciousnessLevel, d.infectionLevel))
       .attr("stroke", "#0f172a")
       .attr("stroke-width", 2);
 
-    // Activity Indicator (Pulse)
+    // Activity/Infection Indicator
     nodeGroup.append("circle")
       .attr("r", 4)
       .attr("fill", "#fff")
       .attr("fill-opacity", (d: any) => {
-          // Flash if sending/receiving recently
+          if (d.infectionLevel > 0.2) return 0.8;
           const isActive = activeTransmissions.some(t => t.source === d.id || t.target === d.id);
           return isActive ? 0.9 : 0;
       })
@@ -149,7 +185,6 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
       nodeGroup
         .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
 
-      // Draw Traffic Lines dynamically based on current node positions
       trafficGroup.selectAll("*").remove();
       activeTransmissions.forEach(t => {
           const s = nodes.find(n => n.id === t.source) as any;
@@ -163,7 +198,7 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
                 .attr("stroke", "#38bdf8")
                 .attr("stroke-width", 2)
                 .attr("stroke-dasharray", "5,5")
-                .attr("stroke-opacity", 1 - (t.age / 2000)) // Fade out
+                .attr("stroke-opacity", 1 - (t.age / 2000))
                 .append("animate")
                   .attr("attributeName", "stroke-dashoffset")
                   .attr("from", "20")
@@ -197,20 +232,22 @@ const NodeGraph: React.FC<NodeGraphProps> = ({ nodes, onNodeSelect, selectedNode
   }, [nodes, selectedNodeId, onNodeSelect]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative overflow-hidden rounded-xl glass-panel">
-       <div className="absolute top-4 left-4 z-10 pointer-events-none">
-         <h3 className="text-sm font-bold text-neur-accent font-mono">SWARM TOPOLOGY</h3>
-         <div className="text-xs text-slate-400">Deterministic Force Layout</div>
-         <div className="flex items-center gap-2 mt-2">
-            <div className="w-2 h-0.5 bg-slate-600"></div>
-            <span className="text-[9px] text-slate-500 uppercase">LINK_ESTABLISHED</span>
-         </div>
-         <div className="flex items-center gap-2">
-            <div className="w-2 h-0.5 bg-neur-accent dashed border-t border-neur-accent"></div>
-            <span className="text-[9px] text-neur-accent uppercase">DATA_PACKET</span>
-         </div>
+    <div ref={containerRef} className="w-full h-full relative overflow-hidden rounded-xl glass-panel perspective-1000">
+       <div 
+         className="absolute inset-0 transition-transform duration-100 pointer-events-none"
+         style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale(0.95)` }}
+       >
+         {/* This div purely handles the 3D container effect for children if we added them, 
+             but here it mostly serves as the anchor for the visual depth */}
        </div>
-      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"></svg>
+
+       <div className="absolute top-4 left-4 z-10 pointer-events-none">
+         <h3 className="text-sm font-bold text-neur-accent font-mono">HOLOGRAPHIC LATTICE</h3>
+         <div className="text-xs text-slate-400">Interactive 3D Viewport</div>
+       </div>
+      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out" 
+           style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}
+      ></svg>
     </div>
   );
 };

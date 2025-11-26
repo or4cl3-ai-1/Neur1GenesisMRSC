@@ -36,10 +36,19 @@ export interface NodeMessage {
   status: 'sent' | 'delivered' | 'encrypted';
 }
 
+export interface NodeIdentity {
+  alias: string;
+  originStory: string;
+  primaryDirective: string;
+  quirks: string[];
+  avatarSeed: string;
+  generatedAt: number;
+}
+
 export interface EchoNode {
   id: string;
   name: string;
-  status: 'active' | 'processing' | 'learning' | 'dormant';
+  status: 'active' | 'processing' | 'learning' | 'dormant' | 'infected';
   pasScore: number; // Phenomenological Assessment Scale
   erps: ERPSMetrics;
   sigma: SigmaMatrixState;
@@ -50,13 +59,15 @@ export interface EchoNode {
   };
   messages: NodeMessage[];
   consciousnessLevel: ConsciousnessLevel;
+  identity?: NodeIdentity;
+  infectionLevel?: number; // 0-1 for Memetic Injector
   position?: { x: number; y: number }; // For D3
 }
 
 export interface LogEntry {
   id: string;
   timestamp: string;
-  source: 'ERPS' | 'SIGMA' | 'EPINOETICS' | 'SYSTEM' | 'ORACLE';
+  source: 'ERPS' | 'SIGMA' | 'EPINOETICS' | 'SYSTEM' | 'ORACLE' | 'DEFENSE' | 'FORGE' | 'VIRUS';
   level: 'info' | 'warning' | 'alert' | 'critical' | 'success';
   message: string;
   metadata?: Record<string, any>;

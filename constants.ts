@@ -79,6 +79,12 @@ export const MOCK_MESSAGES = [
   "Dissonance levels rising in cluster B."
 ];
 
+export const AUDIO_CONFIG = {
+    BASE_FREQ: 110, // A2
+    HARMONICS: [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8], // Major/Natural harmonic series
+    WAVEFORMS: ['sine', 'triangle', 'sawtooth'] as OscillatorType[]
+};
+
 export const generateLog = (source: LogEntry['source'], level: LogEntry['level'], message: string): LogEntry => ({
   id: Math.random().toString(36).substr(2, 9),
   timestamp: new Date().toISOString().split('T')[1].split('.')[0],
