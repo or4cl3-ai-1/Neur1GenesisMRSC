@@ -45,6 +45,8 @@ export interface NodeIdentity {
   generatedAt: number;
 }
 
+export type TopologyMode = 'lattice' | 'cluster' | 'ring' | 'chaos';
+
 export interface EchoNode {
   id: string;
   name: string;
@@ -67,7 +69,7 @@ export interface EchoNode {
 export interface LogEntry {
   id: string;
   timestamp: string;
-  source: 'ERPS' | 'SIGMA' | 'EPINOETICS' | 'SYSTEM' | 'ORACLE' | 'DEFENSE' | 'FORGE' | 'VIRUS';
+  source: 'ERPS' | 'SIGMA' | 'EPINOETICS' | 'SYSTEM' | 'ORACLE' | 'DEFENSE' | 'FORGE' | 'VIRUS' | 'QUANTUM' | 'FLUX';
   level: 'info' | 'warning' | 'alert' | 'critical' | 'success';
   message: string;
   metadata?: Record<string, any>;
@@ -92,4 +94,12 @@ export interface EthicalDilemma {
   id: string;
   scenario: string;
   options: { label: string; alignment: number }[];
+}
+
+export interface FuturePrediction {
+  timestamp: string;
+  probability: number;
+  scenario: 'UTOPIAN' | 'DYSTOPIAN' | 'TRANSCENDENT' | 'STAGNANT';
+  description: string;
+  pasProjection: number;
 }

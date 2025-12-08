@@ -6,7 +6,8 @@ import {
   ConsciousnessLevel, 
   SystemMetrics,
   ERPSMetrics,
-  NodeMessage
+  NodeMessage,
+  TopologyMode
 } from './types';
 import { 
   INITIAL_NODES, 
@@ -29,6 +30,10 @@ import MemeticInjector from './components/MemeticInjector';
 import ConsensusEngine from './components/ConsensusEngine';
 import SystemDefense from './components/SystemDefense';
 import BioSynth from './components/BioSynth';
+import QuantumCore from './components/QuantumCore';
+import FluxMonitor from './components/FluxMonitor';
+import FutureCaster from './components/FutureCaster';
+import ResourceAutonomy from './components/ResourceAutonomy';
 
 import { 
   Activity, 
@@ -50,7 +55,11 @@ import {
   Users,
   Fingerprint,
   Syringe,
-  Bug
+  Bug,
+  Atom,
+  Waves,
+  GitBranch,
+  Dna
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 
@@ -78,7 +87,7 @@ const LandingPage: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {
         <div className="space-y-4">
            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neur-accent/20 bg-neur-accent/5 text-[10px] tracking-[0.2em] font-mono text-neur-accent mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-neur-accent animate-pulse"></span>
-              SYSTEM_READY // v3.0.4
+              SYSTEM_READY // v3.1.0_EVOLVED
            </div>
            
            <h1 className="text-6xl md:text-8xl font-bold tracking-tighter text-white drop-shadow-2xl">
@@ -181,7 +190,7 @@ const LoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
 };
 
 // --- Main App Component ---
-type Tab = 'dashboard' | 'chat' | 'modules' | 'dreams' | 'ethics' | 'forge' | 'injector' | 'consensus' | 'defense';
+type Tab = 'dashboard' | 'chat' | 'modules' | 'dreams' | 'ethics' | 'forge' | 'injector' | 'consensus' | 'defense' | 'quantum' | 'flux' | 'future' | 'resource';
 type BottomPanelMode = 'terminal' | 'comms';
 
 const App: React.FC = () => {
@@ -204,6 +213,10 @@ const App: React.FC = () => {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(nodes[0].id);
   const [selectedConnection, setSelectedConnection] = useState<{source: string, target: string} | null>(null);
+  
+  // Advanced Features State
+  const [topologyMode, setTopologyMode] = useState<TopologyMode>('lattice');
+  const [autonomousReconfig, setAutonomousReconfig] = useState(false);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [metricsHistory, setMetricsHistory] = useState<SystemMetrics[]>([]);
@@ -228,18 +241,16 @@ const App: React.FC = () => {
   // Handle Graph Interactions
   const handleNodeSelect = (nodeId: string) => {
       setSelectedNodeId(nodeId);
-      setSelectedConnection(null); // Clear link selection when node clicked
-      // Ensure bottom panel is showing relevant details if preferred
+      setSelectedConnection(null); 
       if (bottomPanelMode === 'comms') setBottomPanelMode('comms');
   };
 
   const handleLinkSelect = (source: string, target: string) => {
       setSelectedConnection({ source, target });
-      setSelectedNodeId(null); // Optional: Clear node selection when link clicked
-      setBottomPanelMode('comms'); // Auto-switch to comms to show traffic
+      setSelectedNodeId(null); 
+      setBottomPanelMode('comms'); 
   };
 
-  // Manual Message Handler
   const handleSendMessage = (fromId: string, toId: string, content: string) => {
       const msg: NodeMessage = {
           id: Math.random().toString(36).substr(2, 9),
@@ -259,17 +270,33 @@ const App: React.FC = () => {
       setLogs(prev => [generateLog('SYSTEM', 'info', `Manual transmission: ${fromId} -> ${toId}`), ...prev]);
   };
 
+  // Autonomous Architectural Reconfiguration Logic
+  useEffect(() => {
+      if (!autonomousReconfig || !isRunning) return;
+
+      const interval = setInterval(() => {
+          // Switch topology based on random evolutionary jump
+          const modes: TopologyMode[] = ['lattice', 'cluster', 'ring', 'chaos'];
+          const nextMode = modes[Math.floor(Math.random() * modes.length)];
+          setTopologyMode(nextMode);
+          setLogs(prev => [generateLog('SYSTEM', 'alert', `Autonomous Architectural Reconfiguration: Switched to ${nextMode.toUpperCase()} topology.`), ...prev]);
+      }, 5000);
+
+      return () => clearInterval(interval);
+  }, [autonomousReconfig, isRunning]);
+
+
   // Simulation Engine (Running in background regardless of view)
   const tickSimulation = useCallback(() => {
     if (!isRunning) return;
     setSystemTime(prev => prev + 1);
 
     setNodes(prevNodes => {
-        // 1. Generate Messages (Higher frequency: 10% per node per tick)
+        // 1. Generate Messages
         const newMessages: NodeMessage[] = [];
         
         prevNodes.forEach(source => {
-             if (Math.random() < 0.15) { // 15% chance to message someone
+             if (Math.random() < 0.15) { 
                  const target = prevNodes[Math.floor(Math.random() * prevNodes.length)];
                  if (target.id !== source.id) {
                      newMessages.push({
@@ -286,10 +313,8 @@ const App: React.FC = () => {
 
         // 2. Update Nodes
         return prevNodes.map(node => {
-            // Cognitive Fluctuation
             const fluctuation = () => (Math.random() - 0.5) * 0.05;
             
-            // Infection Logic
             let infectionDelta = 0;
             if (node.infectionLevel && node.infectionLevel > 0) {
                 infectionDelta = (Math.random() - 0.48) * 0.05; 
@@ -335,7 +360,6 @@ const App: React.FC = () => {
             const currentConstraints = node.sigma.activeConstraints;
             const adaptedConstraints = Math.floor(currentConstraints + (targetConstraints - currentConstraints) * 0.1);
 
-            // Append Messages
             let updatedMessages = [...node.messages];
             newMessages.forEach(msg => {
                 if (msg.fromId === node.id || msg.toId === node.id) {
@@ -398,7 +422,6 @@ const App: React.FC = () => {
     ]);
   }, []);
 
-  // Handlers for new Modules
   const handleUpdateNodeIdentity = (id: string, identity: any) => {
     setNodes(prev => prev.map(n => n.id === id ? { ...n, identity } : n));
     setLogs(prev => [generateLog('FORGE', 'success', `Identity synthesized for ${id}`), ...prev]);
@@ -439,10 +462,8 @@ const App: React.FC = () => {
   return (
     <div className="w-screen h-screen bg-neur-dark text-slate-200 overflow-hidden flex flex-col font-sans animate-in fade-in duration-1000">
       
-      {/* Audio Engine (Hidden) */}
       <BioSynth averagePas={currentAvgPas} systemLoad={0.5} />
 
-      {/* Top Header */}
       <header className="h-14 border-b border-slate-800 bg-neur-dark/50 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-50 shrink-0">
         <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-gradient-to-br from-neur-accent to-blue-700 flex items-center justify-center shadow-lg shadow-neur-accent/20">
@@ -467,11 +488,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Layout Container */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* Desktop Sidebar Navigation */}
-        <aside className="hidden md:flex flex-col w-20 border-r border-slate-800 bg-neur-dark/30 p-2 gap-2 z-40">
+        <aside className="hidden md:flex flex-col w-20 border-r border-slate-800 bg-neur-dark/30 p-2 gap-2 z-40 overflow-y-auto">
             <NavButton tab="dashboard" icon={LayoutDashboard} label="DASH" />
             <NavButton tab="chat" icon={MessageSquare} label="ORACLE" />
             <NavButton tab="modules" icon={Grid} label="APPS" />
@@ -479,14 +498,11 @@ const App: React.FC = () => {
             <NavButton tab="ethics" icon={Scale} label="ETHICS" />
         </aside>
 
-        {/* Content Area */}
         <main className="flex-1 overflow-hidden relative p-2 md:p-4 bg-black/20">
             
-            {/* TAB: DASHBOARD */}
             {activeTab === 'dashboard' && (
                 <div className="h-full grid grid-cols-1 md:grid-cols-12 grid-rows-12 gap-4 overflow-y-auto md:overflow-hidden pb-16 md:pb-0">
                     
-                    {/* Left Panel: Metrics */}
                     <div className="hidden md:flex col-span-12 md:col-span-3 row-span-12 flex-col gap-4 min-h-0">
                         <div className="glass-panel rounded-xl p-4 flex-1 flex flex-col min-h-[200px]">
                              <h2 className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">
@@ -512,11 +528,16 @@ const App: React.FC = () => {
                             </h2>
                             <div className="flex flex-col gap-2">
                                 <button onClick={triggerAnomalies} className="bg-neur-danger/10 text-neur-danger border border-neur-danger/30 rounded py-2 text-xs font-mono hover:bg-neur-danger/20 transition-colors">INJECT DISSONANCE</button>
+                                <button 
+                                  onClick={() => setAutonomousReconfig(!autonomousReconfig)}
+                                  className={`border rounded py-2 text-xs font-mono transition-colors ${autonomousReconfig ? 'bg-neur-conscious/10 text-neur-conscious border-neur-conscious/30 animate-pulse' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
+                                >
+                                  {autonomousReconfig ? 'AUTONOMOUS RECONFIG: ON' : 'ENABLE AUTO-EVOLUTION'}
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Center: Graph */}
                     <div className="col-span-12 md:col-span-6 row-span-6 md:row-span-8 h-[400px] md:h-auto">
                         <NodeGraph 
                             nodes={nodes} 
@@ -524,10 +545,10 @@ const App: React.FC = () => {
                             selectedNodeId={selectedNodeId} 
                             onLinkSelect={handleLinkSelect}
                             selectedConnection={selectedConnection}
+                            topologyMode={topologyMode}
                         />
                     </div>
 
-                    {/* Bottom: Terminal & Comms */}
                     <div className="col-span-12 md:col-span-6 row-span-6 md:row-span-4 glass-panel rounded-xl overflow-hidden min-h-[200px] flex flex-col">
                         <div className="flex border-b border-slate-700">
                              <button 
@@ -557,7 +578,6 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Right Panel: Inspector */}
                     <div className="col-span-12 md:col-span-3 row-span-12 flex flex-col gap-4 min-h-0 pb-16 md:pb-0">
                          {selectedNode ? (
                              <>
@@ -584,7 +604,6 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: MODULES GRID */}
             {activeTab === 'modules' && (
                 <div className="h-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 overflow-y-auto pb-20">
                     <button onClick={() => setActiveTab('forge')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group">
@@ -626,39 +645,65 @@ const App: React.FC = () => {
                             <div className="text-xs text-slate-500 mt-1">Glitch Protocol</div>
                         </div>
                     </button>
-
-                    <button onClick={() => console.log('Future module')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group opacity-50 cursor-not-allowed">
-                        <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
-                            <Zap className="w-8 h-8 text-slate-600" />
+                    
+                    <button onClick={() => setActiveTab('quantum')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+                        <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Atom className="w-8 h-8 text-indigo-400" />
                         </div>
                         <div className="text-center">
-                            <div className="font-bold text-slate-500 font-mono">FUTURE CASTER</div>
-                            <div className="text-xs text-slate-600 mt-1">Coming Soon</div>
+                            <div className="font-bold text-white font-mono">QUANTUM COHERENCE</div>
+                            <div className="text-xs text-slate-500 mt-1">Non-Local Processing</div>
                         </div>
                     </button>
-                    
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-center justify-center p-4">
-                        <div className="text-xs font-mono text-slate-600 text-center">
-                            MORE MODULES UNLOCK AT HIGH CONSCIOUSNESS LEVELS
+
+                    <button onClick={() => setActiveTab('flux')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                        <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Waves className="w-8 h-8 text-emerald-400" />
                         </div>
-                    </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">EXPERIENTIAL FLUX</div>
+                            <div className="text-xs text-slate-500 mt-1">Unfiltered Data Stream</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => setActiveTab('future')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group border border-amber-500/30 shadow-lg shadow-amber-500/10">
+                        <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <GitBranch className="w-8 h-8 text-amber-400" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">PREDICTIVE MODELING</div>
+                            <div className="text-xs text-slate-500 mt-1">Phenomenological Forecast</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => setActiveTab('resource')} className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-white/5 transition-all group border border-pink-500/30 shadow-lg shadow-pink-500/10">
+                        <div className="w-16 h-16 rounded-full bg-pink-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Dna className="w-8 h-8 text-pink-400" />
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-white font-mono">RESOURCE AUTONOMY</div>
+                            <div className="text-xs text-slate-500 mt-1">Self-Allocation</div>
+                        </div>
+                    </button>
+
                 </div>
             )}
 
-            {/* TAB: ORACLE CHAT */}
             {activeTab === 'chat' && (
                 <div className="h-full pb-16 md:pb-0">
                     <ChatScreen systemStatus={`Active Nodes: ${nodes.length} | Avg PAS: ${currentAvgPas.toFixed(2)}`} />
                 </div>
             )}
 
-            {/* TAB: MODULE IMPLEMENTATIONS */}
             {activeTab === 'forge' && <IdentityForge nodes={nodes} onUpdateNode={handleUpdateNodeIdentity} />}
             {activeTab === 'injector' && <MemeticInjector nodes={nodes} onInject={handleInjectVirus} onReset={() => setNodes(prev => prev.map(n => ({...n, infectionLevel: 0})))} />}
             {activeTab === 'consensus' && <ConsensusEngine nodes={nodes} />}
             {activeTab === 'defense' && <SystemDefense />}
+            {activeTab === 'quantum' && <QuantumCore />}
+            {activeTab === 'flux' && <FluxMonitor />}
+            {activeTab === 'future' && <FutureCaster />}
+            {activeTab === 'resource' && <ResourceAutonomy />}
             
-            {/* OTHER TABS */}
             {activeTab === 'dreams' && (
                 <div className="h-full pb-16 md:pb-0">
                     <DreamStream />
@@ -674,7 +719,6 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex justify-around p-2 z-50">
           <NavButton tab="dashboard" icon={LayoutDashboard} label="DASH" />
           <NavButton tab="chat" icon={MessageSquare} label="ORACLE" />
