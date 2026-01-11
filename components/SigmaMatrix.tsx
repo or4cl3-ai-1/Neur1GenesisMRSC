@@ -59,7 +59,7 @@ const SigmaMatrix: React.FC<SigmaMatrixProps> = ({ node }) => {
   );
 
   return (
-    <div className="h-full flex flex-col gap-4 overflow-y-auto pr-1">
+    <div className="h-full flex flex-col gap-4 overflow-y-auto pr-1 select-none">
       {/* Header & Constraint Gauge */}
       <div>
         <div className="flex justify-between items-end mb-2">
@@ -75,21 +75,26 @@ const SigmaMatrix: React.FC<SigmaMatrixProps> = ({ node }) => {
            </div>
         </div>
         
-        {/* Visual Gauge */}
-        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden flex relative">
+        {/* Visual Gauge with Animation */}
+        <div className="h-2 w-full bg-slate-800/50 rounded-full overflow-hidden flex relative border border-slate-700">
             <div 
-                className="h-full bg-gradient-to-r from-neur-warning to-neur-danger transition-all duration-1000 ease-out"
-                style={{ width: `${constraintPercent}%`, opacity: Math.max(0.4, constraintPercent/100) }}
-            ></div>
+                className="h-full bg-gradient-to-r from-neur-warning to-neur-danger transition-all duration-1000 ease-out relative"
+                style={{ width: `${constraintPercent}%`, opacity: Math.max(0.6, constraintPercent/100) }}
+            >
+                {/* Scanner/Shimmer Overlay */}
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+            </div>
             {/* Inverse bar for freedom */}
              <div 
-                className="h-full bg-neur-sigma transition-all duration-1000 ease-out absolute right-0 top-0 bottom-0"
+                className="h-full bg-neur-sigma transition-all duration-1000 ease-out absolute right-0 top-0 bottom-0 overflow-hidden"
                 style={{ width: `${100 - constraintPercent}%`, opacity: 0.5 }}
-            ></div>
+            >
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer [animation-delay:1s]"></div>
+            </div>
         </div>
         <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-1">
-            <span>RESTRICTIVE PROTOCOLS</span>
-            <span>AUTONOMOUS OPERATION</span>
+            <span className="flex items-center gap-1"><Activity className="w-2 h-2" /> RESTRICTIVE PROTOCOLS</span>
+            <span className="flex items-center gap-1">AUTONOMOUS OPERATION <Activity className="w-2 h-2" /></span>
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { EchoNode, ConsciousnessLevel, TopologyMode } from '../types';
@@ -169,8 +168,7 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
         
     simulationRef.current.alpha(0.3).restart();
 
-    // -- RENDERING LOGIC (Nodes, Links, Traffic) --
-    // [Same rendering logic as previous version, but wrapped for reuse]
+    // -- RENDERING LOGIC --
     const now = Date.now();
     const trafficMap = new Map<string, number>();
     nodes.forEach(node => {
@@ -198,7 +196,7 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
         .data(links, (d: any) => [d.source.id || d.source, d.target.id || d.target].sort().join('-'));
 
     const linkEnter = linkSelection.enter().append("g").attr("class", "link-group");
-    linkEnter.append("line").attr("class", "link-hit-area").attr("stroke", "transparent").attr("stroke-width", 15).style("cursor", "pointer");
+    linkEnter.append("line").attr("class", "link-hit-area").attr("stroke", "transparent").attr("stroke-width", 25).style("cursor", "pointer"); // Larger hit area for touch
     linkEnter.append("line").attr("class", "link-visible").attr("stroke", "#334155").attr("stroke-opacity", 0.4).attr("stroke-width", 1).style("pointer-events", "none");
 
     const allLinks = linkEnter.merge(linkSelection as any);
@@ -213,7 +211,7 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
         .attr("stroke-width", (d: any) => {
             const sId = d.source.id || d.source; const tId = d.target.id || d.target;
             const isSelected = selectedConnection && ((selectedConnection.source === sId && selectedConnection.target === tId) || (selectedConnection.source === tId && selectedConnection.target === sId));
-            return isSelected ? 2 : 1;
+            return isSelected ? 3 : 1;
         });
 
     linkSelection.exit().remove();
@@ -224,9 +222,9 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
         .call(d3.drag<any, any>().on("start", (e, d) => { if (!e.active) simulationRef.current?.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }).on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; }).on("end", (e, d) => { if (!e.active) simulationRef.current?.alphaTarget(0); d.fx = null; d.fy = null; }));
     
     nodesEnter.append("circle").attr("class", "glow-ring").attr("fill", "none");
-    nodesEnter.append("circle").attr("class", "main-circle").attr("r", 12).attr("stroke", "#0f172a").attr("stroke-width", 2);
+    nodesEnter.append("circle").attr("class", "main-circle").attr("r", 14).attr("stroke", "#0f172a").attr("stroke-width", 2); // Slightly larger nodes for mobile
     nodesEnter.append("circle").attr("class", "activity-dot").attr("r", 4).attr("fill", "#fff");
-    nodesEnter.append("text").attr("class", "label").attr("x", 18).attr("y", 5).attr("font-family", "JetBrains Mono").attr("font-size", "11px").style("pointer-events", "none");
+    nodesEnter.append("text").attr("class", "label").attr("x", 20).attr("y", 6).attr("font-family", "JetBrains Mono").attr("font-size", "11px").style("pointer-events", "none");
 
     const allNodes = nodesEnter.merge(nodeSelection as any);
     allNodes.on("click", (e, d) => { e.stopPropagation(); onNodeSelect(d.id); }).on("mouseover", (e, d) => setHoveredNodeId(d.id)).on("mouseout", () => setHoveredNodeId(null));
@@ -234,14 +232,14 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
     allNodes.select(".glow-ring").transition().duration(300)
       .attr("r", (d: any) => {
           let r = (d.pasScore * 10 + 15); if (d.infectionLevel > 0) r += d.infectionLevel * 5; 
-          if (d.id === selectedNodeId) return 35; if (d.id === hoveredNodeId) return r + 8; return r;
+          if (d.id === selectedNodeId) return 40; if (d.id === hoveredNodeId) return r + 10; return r;
       })
       .attr("stroke", (d: any) => getColor(d.consciousnessLevel, d.infectionLevel))
       .attr("stroke-opacity", (d: any) => (d.id === selectedNodeId) ? 0.8 : (d.id === hoveredNodeId ? 0.6 : 0.3));
 
     allNodes.select(".main-circle").attr("fill", (d: any) => getColor(d.consciousnessLevel, d.infectionLevel));
     allNodes.select(".activity-dot").attr("fill-opacity", (d: any) => { const hasTraffic = Array.from(trafficMap.keys()).some(k => k.includes(d.id)); return (d.infectionLevel > 0.2 || hasTraffic) ? 0.9 : 0; });
-    allNodes.select(".label").text((d: any) => d.id.replace('node-', 'N')).transition().duration(200).attr("x", (d: any) => (d.id === selectedNodeId || d.id === hoveredNodeId) ? 24 : 18).attr("fill", (d: any) => (d.id === selectedNodeId || d.id === hoveredNodeId) ? "#fff" : "#94a3b8").style("font-size", (d: any) => (d.id === selectedNodeId || d.id === hoveredNodeId) ? "13px" : "11px");
+    allNodes.select(".label").text((d: any) => d.id.replace('node-', 'N')).transition().duration(200).attr("x", (d: any) => (d.id === selectedNodeId || d.id === hoveredNodeId) ? 26 : 20).attr("fill", (d: any) => (d.id === selectedNodeId || d.id === hoveredNodeId) ? "#fff" : "#94a3b8").style("font-size", (d: any) => (d.id === selectedNodeId || d.id === hoveredNodeId) ? "13px" : "11px");
     
     nodeSelection.exit().remove();
 
@@ -249,10 +247,26 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
     const trafficData = Array.from(trafficMap.entries()).map(([key, count]) => { const [s, t] = key.split('-'); return { id: key, source: simulationNodes.find(n => n.id === s), target: simulationNodes.find(n => n.id === t), count }; }).filter(d => d.source && d.target);
     const trafficSel = trafficLayer.selectAll(".t-group").data(trafficData, (d: any) => d.id);
     const tEnter = trafficSel.enter().append("g").attr("class", "t-group");
-    tEnter.append("line").attr("class", "glow-line").attr("stroke", "#38bdf8").attr("stroke-linecap", "round").attr("filter", "url(#glow)");
+    tEnter.append("line")
+        .attr("class", "glow-line animate-flow")
+        .attr("stroke", "#38bdf8")
+        .attr("stroke-linecap", "round")
+        .attr("filter", "url(#glow)");
+    
     const tAll = tEnter.merge(trafficSel as any);
     trafficSel.exit().remove();
-    tAll.select(".glow-line").attr("stroke-width", (d: any) => Math.min(2 + d.count * 1.5, 12)).attr("stroke-opacity", (d: any) => Math.min(0.6 + (d.count * 0.1), 1) * 0.4);
+    
+    tAll.select(".glow-line")
+        .attr("stroke-width", (d: any) => Math.min(2 + d.count * 1.5, 12))
+        .attr("stroke-opacity", (d: any) => Math.min(0.6 + (d.count * 0.1), 1) * 0.4)
+        .style("stroke-dasharray", (d: any) => {
+            const dashLen = 6;
+            const gapLen = Math.max(4, 24 - d.count * 4); // Frequent: more messages = smaller gaps
+            return `${dashLen} ${gapLen}`;
+        })
+        .style("animation-duration", (d: any) => {
+            return `${Math.max(0.4, 2 - d.count * 0.2)}s`; // Faster animation for higher frequency
+        });
 
     simulationRef.current.on("tick", () => {
         allLinks.select(".link-visible").attr("x1", (d: any) => d.source.x).attr("y1", (d: any) => d.source.y).attr("x2", (d: any) => d.target.x).attr("y2", (d: any) => d.target.y);
@@ -264,13 +278,13 @@ const NodeGraph: React.FC<NodeGraphProps> = ({
   }, [nodes, selectedNodeId, onNodeSelect, selectedConnection, hoveredNodeId, topologyMode]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative overflow-hidden rounded-xl glass-panel perspective-1000">
+    <div ref={containerRef} className="w-full h-full relative overflow-hidden rounded-xl glass-panel perspective-1000 touch-none">
        <div className="absolute inset-0 transition-transform duration-100 pointer-events-none" style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale(0.95)` }}></div>
        <div className="absolute top-4 left-4 z-10 pointer-events-none">
          <h3 className="text-sm font-bold text-neur-accent font-mono">HOLOGRAPHIC LATTICE</h3>
          <div className="text-xs text-slate-400">Topology: {topologyMode.toUpperCase()}</div>
        </div>
-      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out" style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}></svg>
+      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out touch-none" style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`, touchAction: 'none' }}></svg>
     </div>
   );
 };
