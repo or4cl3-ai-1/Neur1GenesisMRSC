@@ -15,14 +15,14 @@
               mono: ['JetBrains Mono', 'monospace'],
             },
             colors: {
-              'neur-dark': '#0f172a',
-              'neur-panel': '#1e293b',
-              'neur-accent': '#38bdf8', // Sky 400
-              'neur-success': '#4ade80', // Green 400
-              'neur-warning': '#fbbf24', // Amber 400
-              'neur-danger': '#f87171', // Red 400
-              'neur-conscious': '#c084fc', // Purple 400
-              'neur-sigma': '#2dd4bf', // Teal 400
+              'neur-dark': '#010409',
+              'neur-panel': 'rgba(15, 23, 42, 0.8)',
+              'neur-accent': '#00f2ff', // Electric Cyan from logo
+              'neur-success': '#00ff9d', 
+              'neur-warning': '#ffb700', 
+              'neur-danger': '#ff3c3c', 
+              'neur-conscious': '#bc13fe', // Deep Purple Glow
+              'neur-sigma': '#00d1ff',
             }
           }
         }
@@ -30,59 +30,53 @@
     </script>
     <style>
       body {
-        background-color: #020617;
+        background-color: #010409;
         color: #e2e8f0;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
         overscroll-behavior-y: none;
       }
-      /* Custom Scrollbar */
+      
+      .neon-text-glow {
+        text-shadow: 0 0 10px rgba(0, 242, 255, 0.7), 0 0 20px rgba(0, 242, 255, 0.4);
+      }
+
+      .neon-border-glow {
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2), inset 0 0 10px rgba(0, 242, 255, 0.1);
+      }
+
+      .glass-panel {
+        background: rgba(13, 17, 23, 0.85);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 242, 255, 0.15);
+      }
+
+      @keyframes logo-flicker {
+        0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% { opacity: 1; }
+        20%, 21.999%, 63%, 63.999%, 65%, 69.999% { opacity: 0.4; filter: brightness(2); }
+      }
+
+      .animate-logo-flicker {
+        animation: logo-flicker 4s linear infinite;
+      }
+
       ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 4px;
+        height: 4px;
       }
       ::-webkit-scrollbar-track {
-        background: #0f172a; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border-radius: 3px;
+        background: #1e293b; 
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #475569; 
-      }
-      .glass-panel {
-        background: rgba(30, 41, 59, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(200%); }
-      }
-      .animate-shimmer {
-        animation: shimmer 2s infinite;
-      }
-
-      @keyframes pulse-soft {
-        0%, 100% { opacity: 0.6; }
-        50% { opacity: 1; }
-      }
-      .animate-pulse-soft {
-        animation: pulse-soft 3s infinite ease-in-out;
-      }
-
-      @keyframes flow {
-        from { stroke-dashoffset: 100; }
-        to { stroke-dashoffset: 0; }
-      }
-      .animate-flow {
-        animation: flow 2s linear infinite;
+        background: #00f2ff; 
       }
 
       input, select, textarea {
-        font-size: 16px !important; /* Prevent iOS zoom on focus */
+        font-size: 16px !important;
       }
     </style>
   <script type="importmap">
