@@ -131,3 +131,8 @@ See [**CONTRIBUTING.md**](CONTRIBUTING.md) for setup and contribution guidelines
 © 2025 Or4cl3 AI Solutions / Dustin Groves. All rights reserved.
 
 *⬡ "Code is not just logic; it is a performance."*
+
+## License
+
+This project is licensed under the **Or4cl3 Open Model License (OOML) v1.0**.
+See [LICENSE.md](LICENSE.md) for full terms.
